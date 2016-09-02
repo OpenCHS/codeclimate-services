@@ -16,7 +16,7 @@ class CC::Service::GitHubPullRequests < CC::PullRequests
       default: "codeclimate"
     attribute :welcome_comment_enabled, Axiom::Types::Boolean,
       label: "Welcome comment enabled?",
-      description: "Should Code Climate post a welcome comment on pull requests?",
+      description: "Post a welcome comment?",
       default: false
     attribute :welcome_comment_markdown, Axiom::Types::String,
       label: "Welcome comment markdown",
