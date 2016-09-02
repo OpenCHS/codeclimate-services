@@ -16,11 +16,11 @@ class CC::PullRequests < CC::Service
   def receive_test
     setup_http
 
-    able_to_update_status = able_to_update_status?
+    tests = [able_to_update_status?, able_to_post_comments?]
 
     {
-      ok: [able_to_update_status, able_to_post_comments?].compact.all?,
-      message: MESSAGES.fetch([able_to_update_status, able_to_post_comments?]),
+      ok: tests.compact.all?,
+      message: MESSAGES.fetch(tests),
     }
   end
 
