@@ -101,7 +101,7 @@ class CC::PullRequests < CC::Service
   end
 
   def presenter
-    CC::Service::PullRequestsPresenter.new(@payload, config)
+    CC::Service::PullRequestsPresenter.new(@payload)
   end
 
   def update_status(state, description, context = config.context)
