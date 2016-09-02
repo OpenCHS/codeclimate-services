@@ -126,9 +126,9 @@ class TestGitlabMergeRequests < CC::Service::TestCase
   def test_merge_request_status_test_failure
     @stubs.post("api/v3/projects/hal%2Fhal9000/statuses/#{"0" * 40}") { |_env| [401, {}, ""] }
 
-    assert_raises(CC::Service::HTTPError) do
-      receive_test({}, git_url: "ssh://git@gitlab.com/hal/hal9000.git")
-    end
+    response = receive_test({}, git_url: "ssh://git@gitlab.com/hal/hal9000.git")
+    assert_equal response[:ok], false
+    assert_equal response[:message], CC::PullRequests::CANT_UPDATE_STATUS_MESSAGE
   end
 
   def test_merge_request_unknown_state

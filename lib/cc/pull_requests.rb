@@ -1,8 +1,34 @@
 class CC::PullRequests < CC::Service
+  VALID_TOKEN_MESSAGE = "Access token is valid.".freeze
+  CANT_POST_COMMENTS_MESSAGE = "Access token is invalid - can't post comments".freeze
+  CANT_UPDATE_STATUS_MESSAGE = "Access token is invalid - can't update status.".freeze
+  INVALID_TOKEN_MESSAGE = "Access token is invalid.".freeze
+
   def receive_test
     setup_http
 
-    receive_test_status
+    able_to_update_status = able_to_update_status?
+
+    able_to_post_comments =
+      if welcome_comment_implemented? && config.welcome_comment_enabled
+        able_to_comment?
+      end
+
+    ok = [able_to_update_status, able_to_post_comments].compact.all?
+
+    message = {
+      [true, true] => VALID_TOKEN_MESSAGE,
+      [true, nil] => VALID_TOKEN_MESSAGE,
+      [false, nil] => CANT_UPDATE_STATUS_MESSAGE,
+      [true, false] => CANT_POST_COMMENTS_MESSAGE,
+      [false, true] => CANT_UPDATE_STATUS_MESSAGE,
+      [false, false] => INVALID_TOKEN_MESSAGE,
+    }.fetch([able_to_update_status, able_to_post_comments])
+
+    {
+      ok: ok,
+      message: message,
+    }
   end
 
   def receive_pull_request
@@ -69,19 +95,15 @@ class CC::PullRequests < CC::Service
     raise NotImplementedError
   end
 
-  def receive_test_status
+  def able_to_update_status?
     url = base_status_url("0" * 40)
     params = { state: "success" }
     raw_post(url, params.to_json)
   rescue CC::Service::HTTPError => e
     if e.status == test_status_code
-      {
-        ok: true,
-        params: params.as_json,
-        status: e.status,
-        endpoint_url: url,
-        message: "Access token is valid",
-      }
+      true
+    elsif (400..499).include?(e.status)
+      false
     else
       raise
     end
@@ -123,5 +145,9 @@ class CC::PullRequests < CC::Service
 
   def git_url
     @git_url ||= URI.parse(@payload.fetch("git_url"))
+  end
+
+  def welcome_comment_implemented?
+    false
   end
 end

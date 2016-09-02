@@ -90,6 +90,24 @@ class TestGitHubPullRequests < CC::Service::TestCase
     assert receive_test({}, github_slug: "pbrisbin/foo")[:ok], "Expected test of pull request to be true"
   end
 
+  def test_pull_request_status_test_success_and_comment_success
+    @stubs.post("/repos/pbrisbin/foo/statuses/#{"0" * 40}") { |_env| [422, {}, ""] }
+    @stubs.get("/user") { |env| [200, {'x-oauth-scopes' => "foo,repo,bar" }, ""] }
+
+    response = receive_test({ welcome_comment_enabled: true }, github_slug: "pbrisbin/foo")
+    assert response[:ok], "Expected test of pull request to be true"
+    assert_equal response[:message], CC::PullRequests::VALID_TOKEN_MESSAGE
+  end
+
+  def test_pull_request_status_success_but_not_correct_permissions_to_comment
+    @stubs.post("/repos/pbrisbin/foo/statuses/#{"0" * 40}") { |_env| [422, {}, ""] }
+    @stubs.get("/user") { |env| [200, {'x-oauth-scopes' => "foo,zepo,bar" }, ""] }
+
+    response = receive_test({ welcome_comment_enabled: true }, github_slug: "pbrisbin/foo")
+    assert_equal false, response[:ok]
+    assert_equal response[:message], CC::PullRequests::CANT_POST_COMMENTS_MESSAGE
+  end
+
   def test_pull_request_status_test_doesnt_blow_up_when_unused_keys_present_in_config
     @stubs.post("/repos/pbrisbin/foo/statuses/#{"0" * 40}") { |_env| [422, {}, ""] }
 
@@ -99,18 +117,28 @@ class TestGitHubPullRequests < CC::Service::TestCase
   def test_pull_request_status_test_failure
     @stubs.post("/repos/pbrisbin/foo/statuses/#{"0" * 40}") { |_env| [401, {}, ""] }
 
-    assert_raises(CC::Service::HTTPError) do
-      receive_test({}, github_slug: "pbrisbin/foo")
-    end
+    response = receive_test({}, github_slug: "pbrisbin/foo")
+    assert_equal response[:ok], false
+    assert_equal response[:message], CC::PullRequests::CANT_UPDATE_STATUS_MESSAGE
   end
 
-  def test_pull_request_unknown_state
+  def test_pull_request_status_test_failure_and_not_correct_permissions_to_comment
+    @stubs.post("/repos/pbrisbin/foo/statuses/#{"0" * 40}") { |_env| [401, {}, ""] }
+    @stubs.get("/user") { |env| [200, {'x-oauth-scopes' => "foo,zepo,bar" }, ""] }
+
+    response = receive_test({ welcome_comment_enabled: true }, github_slug: "pbrisbin/foo")
+    assert_equal response[:ok], false
+
+    assert_equal response[:message], CC::PullRequests::INVALID_TOKEN_MESSAGE
+  end
+
+  def test_updating_status_for_pull_request_unknown_state
     response = receive_pull_request({}, state: "unknown")
 
     assert_equal({ ok: false, message: "Unknown state" }, response)
   end
 
-  def test_different_base_url
+  def test_updating_status_for_different_base_url
     @stubs.post("/repos/pbrisbin/foo/statuses/#{"0" * 40}") do |env|
       assert env[:url].to_s == "http://example.com/repos/pbrisbin/foo/statuses/#{"0" * 40}"
       [422, { "x-oauth-scopes" => "gist, user, repo" }, ""]
@@ -119,7 +147,7 @@ class TestGitHubPullRequests < CC::Service::TestCase
     assert receive_test({ base_url: "http://example.com" }, github_slug: "pbrisbin/foo")[:ok], "Expected test of pull request to be true"
   end
 
-  def test_default_context
+  def test_updating_status_for_default_context
     expect_status_update("gordondiggs/ellis", "abc123", "context" => "codeclimate",
                                                         "state" => "pending")
 
@@ -128,7 +156,7 @@ class TestGitHubPullRequests < CC::Service::TestCase
       state:       "pending")
   end
 
-  def test_different_context
+  def test_updating_status_for_different_context
     expect_status_update("gordondiggs/ellis", "abc123", "context" => "sup",
       "state" => "pending")
 
@@ -149,6 +177,8 @@ class TestGitHubPullRequests < CC::Service::TestCase
         assert v === body[k],
           "Unexpected value for #{k}. #{v.inspect} !== #{body[k].inspect}"
       end
+
+      [201, {}, {}]
     end
   end
 

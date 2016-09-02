@@ -13,6 +13,10 @@ class CC::Service::GitHubPullRequests < CC::PullRequests
       label: "Github Context",
       description: "The integration name next to the pull request status",
       default: "codeclimate"
+    attribute :welcome_comment_enabled, Axiom::Types::Boolean,
+      label: "Welcome comment enabled?",
+      description: "Should Code Climate post a welcome comment on pull requests?",
+      default: false
 
     validates :oauth_token, presence: true
   end
@@ -72,5 +76,17 @@ class CC::Service::GitHubPullRequests < CC::PullRequests
 
   def test_status_code
     422
+  end
+
+  def welcome_comment_implemented?
+    true
+  end
+
+  def user_url
+    "#{config.base_url}/user"
+  end
+
+  def able_to_comment?
+    response_includes_repo_scope?(service_get(user_url))
   end
 end
