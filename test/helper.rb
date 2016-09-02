@@ -1,7 +1,6 @@
 require "test/unit"
 require "mocha/test_unit"
 require "pp"
-require "pry"
 
 require "codeclimate-test-reporter"
 CodeClimate::TestReporter.start
@@ -23,7 +22,6 @@ class CC::Service::TestCase < Test::Unit::TestCase
 
   def teardown
     @stubs.verify_stubbed_calls
-    $pauseme = false
   end
 
   def service(klass, data, payload)
