@@ -148,6 +148,6 @@ class CC::PullRequests < CC::Service
   end
 
   def welcome_comment_implemented?
-    false
+    respond_to?(:receive_pull_request_welcome_comment)
   end
 end

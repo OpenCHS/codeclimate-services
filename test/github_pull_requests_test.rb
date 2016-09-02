@@ -165,7 +165,85 @@ class TestGitHubPullRequests < CC::Service::TestCase
       state:       "pending")
   end
 
+  def test_posting_welcome_comment_to_non_admin
+    expect_welcome_comment(
+      "gordondiggs/ellis",
+      "45",
+      does_not_contain: [/customize this message or disable/],
+    )
+
+    receive_welcome_comment(
+      { welcome_comment_enabled: true },
+      {
+        author_is_site_admin: false,
+      }
+    )
+  end
+
+  def test_posting_welcome_comment_to_admin
+    expect_welcome_comment(
+      "gordondiggs/ellis",
+      "45",
+      contains: [/is using Code Climate/, /customize this message or disable/, /example.com/]
+    )
+
+    receive_welcome_comment(
+      { welcome_comment_enabled: true },
+      {
+        author_is_site_admin: true,
+      }
+    )
+  end
+
+  def test_posting_welcome_comment_with_custom_body
+    expect_welcome_comment(
+      "gordondiggs/ellis",
+      "45",
+      contains: [/Can't wait to review this/],
+      does_not_contain: [/is using Code Climate/],
+    )
+
+    receive_welcome_comment(
+      {
+        welcome_comment_enabled: true,
+        welcome_comment_markdown: "Can't wait to review this!",
+      },
+      {
+        author_is_site_admin: true,
+      }
+    )
+  end
+
+  def test_no_comment_when_not_opted_in
+    receive_welcome_comment(
+      { welcome_comment_enabled: false },
+      {
+        author_is_site_admin: true,
+      }
+    )
+  end
+
   private
+
+  def expect_welcome_comment(repo, number, contains: [], does_not_contain: [])
+    @stubs.post "repos/#{repo}/issues/#{number}/comments" do |env|
+      assert_equal "token 123", env[:request_headers]["Authorization"]
+
+      body = JSON.parse(env[:body])
+      assert_equal body.keys, %w[body]
+
+      comment_body = body["body"]
+      contains.each do |pattern|
+        assert_match pattern, comment_body
+      end
+
+      does_not_contain.each do |pattern|
+        assert_not_match pattern, comment_body
+      end
+
+      [201, {}, {}]
+    end
+  end
 
   def expect_status_update(repo, commit_sha, params)
     @stubs.post "repos/#{repo}/statuses/#{commit_sha}" do |env|
@@ -195,6 +273,20 @@ class TestGitHubPullRequests < CC::Service::TestCase
       CC::Service::GitHubPullRequests,
       { oauth_token: "123" }.merge(config),
       { name: "pull_request_coverage", issue_comparison_counts: { "fixed" => 1, "new" => 2 } }.merge(event_data),
+    )
+  end
+
+  def receive_welcome_comment(config, event_data)
+    receive(
+      CC::Service::GitHubPullRequests,
+      { oauth_token: "123" }.merge(config),
+      {
+        name: "pull_request_welcome_comment",
+        github_slug: "gordondiggs/ellis",
+        number: "45",
+        author_username: "mrb",
+        pull_request_integration_edit_url: "http://example.com/edit",
+      }.merge(event_data),
     )
   end
 

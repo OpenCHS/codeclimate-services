@@ -17,12 +17,30 @@ class CC::Service::GitHubPullRequests < CC::PullRequests
       label: "Welcome comment enabled?",
       description: "Should Code Climate post a welcome comment on pull requests?",
       default: false
+    attribute :welcome_comment_markdown, Axiom::Types::String,
+      label: "Welcome comment markdown",
+      description: "The body of the welcome comment for first-time contributors to this repo.",
+      default: <<-COMMENT
+* This repository is using Code Climate to automatically check for code quality issues.
+* You can see results for this analysis in the PR status below.
+* You can install [the Code Climate browser extension](https://codeclimate.com/browser) to see analysis without leaving GitHub.
+
+Thanks for your contribution!
+    COMMENT
 
     validates :oauth_token, presence: true
   end
 
   self.title = "GitHub Pull Requests"
   self.description = "Update pull requests on GitHub"
+
+  def receive_pull_request_welcome_comment
+    return unless config.welcome_comment_enabled
+
+    setup_http
+
+    @response = service_post(comments_url, { body: welcome_comment_markdown }.to_json)
+  end
 
   private
 
@@ -70,6 +88,10 @@ class CC::Service::GitHubPullRequests < CC::PullRequests
     @payload.fetch("github_slug")
   end
 
+  def author_username
+    @payload.fetch("author_username")
+  end
+
   def response_includes_repo_scope?(response)
     response.headers["x-oauth-scopes"] && response.headers["x-oauth-scopes"].split(/\s*,\s*/).include?("repo")
   end
@@ -86,7 +108,44 @@ class CC::Service::GitHubPullRequests < CC::PullRequests
     "#{config.base_url}/user"
   end
 
+  def comments_url
+    "#{config.base_url}/repos/#{github_slug}/issues/#{number}/comments"
+  end
+
   def able_to_comment?
     response_includes_repo_scope?(service_get(user_url))
+  end
+
+  INTRODUCTION_TEMPLATE = <<-HEADER.freeze
+Hey, @%s-- Since this is the first PR we've seen from you, here's some things you should know about contributing to %s:
+  HEADER
+
+  def welcome_comment_introduction
+    format INTRODUCTION_TEMPLATE, author_username, github_slug
+  end
+
+  def welcome_comment_body
+    config.welcome_comment_markdown
+  end
+
+  ADMIN_ONLY_FOOTER_TEMPLATE = <<-FOOTER.freeze
+* * *
+Quick note: By default, Code Climate will post the above comment on the *first* PR it sees from each contributor. If you'd like to customize this message or disable this, go [here](%s).
+  FOOTER
+
+  def welcome_comment_footer
+    format ADMIN_ONLY_FOOTER_TEMPLATE, @payload.fetch("pull_request_integration_edit_url")
+  end
+
+  def author_is_site_admin?
+    @payload.fetch("author_is_site_admin")
+  end
+
+  def welcome_comment_markdown
+    if author_is_site_admin?
+      welcome_comment_introduction + welcome_comment_body + welcome_comment_footer
+    else
+      welcome_comment_introduction + welcome_comment_body
+    end
   end
 end
