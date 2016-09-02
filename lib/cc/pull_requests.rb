@@ -5,13 +5,13 @@ class CC::PullRequests < CC::Service
   INVALID_TOKEN_MESSAGE = "Access token is invalid.".freeze
 
   MESSAGES = {
-      [true, true] => VALID_TOKEN_MESSAGE,
-      [true, nil] => VALID_TOKEN_MESSAGE,
-      [false, nil] => CANT_UPDATE_STATUS_MESSAGE,
-      [true, false] => CANT_POST_COMMENTS_MESSAGE,
-      [false, true] => CANT_UPDATE_STATUS_MESSAGE,
-      [false, false] => INVALID_TOKEN_MESSAGE,
-    }.freeze
+    [true, true] => VALID_TOKEN_MESSAGE,
+    [true, nil] => VALID_TOKEN_MESSAGE,
+    [false, nil] => CANT_UPDATE_STATUS_MESSAGE,
+    [true, false] => CANT_POST_COMMENTS_MESSAGE,
+    [false, true] => CANT_UPDATE_STATUS_MESSAGE,
+    [false, false] => INVALID_TOKEN_MESSAGE,
+  }.freeze
 
   def receive_test
     setup_http
@@ -101,7 +101,7 @@ class CC::PullRequests < CC::Service
   end
 
   def presenter
-    CC::Service::PullRequestsPresenter.new(@payload)
+    CC::Service::PullRequestsPresenter.new(@payload, config)
   end
 
   def update_status(state, description, context = config.context)
