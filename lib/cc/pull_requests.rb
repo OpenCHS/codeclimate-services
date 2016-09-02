@@ -4,30 +4,23 @@ class CC::PullRequests < CC::Service
   CANT_UPDATE_STATUS_MESSAGE = "Access token is invalid - can't update status.".freeze
   INVALID_TOKEN_MESSAGE = "Access token is invalid.".freeze
 
-  def receive_test
-    setup_http
-
-    able_to_update_status = able_to_update_status?
-
-    able_to_post_comments =
-      if welcome_comment_implemented? && config.welcome_comment_enabled
-        able_to_comment?
-      end
-
-    ok = [able_to_update_status, able_to_post_comments].compact.all?
-
-    message = {
+  MESSAGES = {
       [true, true] => VALID_TOKEN_MESSAGE,
       [true, nil] => VALID_TOKEN_MESSAGE,
       [false, nil] => CANT_UPDATE_STATUS_MESSAGE,
       [true, false] => CANT_POST_COMMENTS_MESSAGE,
       [false, true] => CANT_UPDATE_STATUS_MESSAGE,
       [false, false] => INVALID_TOKEN_MESSAGE,
-    }.fetch([able_to_update_status, able_to_post_comments])
+    }.freeze
+
+  def receive_test
+    setup_http
+
+    able_to_update_status = able_to_update_status?
 
     {
-      ok: ok,
-      message: message,
+      ok: [able_to_update_status, able_to_post_comments?].compact.all?,
+      message: MESSAGES.fetch([able_to_update_status, able_to_post_comments?]),
     }
   end
 
@@ -96,13 +89,11 @@ class CC::PullRequests < CC::Service
   end
 
   def able_to_update_status?
-    url = base_status_url("0" * 40)
-    params = { state: "success" }
-    raw_post(url, params.to_json)
+    raw_post(base_status_url("0" * 40), { state: "success" }.to_json)
   rescue CC::Service::HTTPError => e
     if e.status == test_status_code
       true
-    elsif (400..499).include?(e.status)
+    elsif (400..499).cover?(e.status)
       false
     else
       raise
@@ -149,5 +140,12 @@ class CC::PullRequests < CC::Service
 
   def welcome_comment_implemented?
     respond_to?(:receive_pull_request_welcome_comment)
+  end
+
+  def able_to_post_comments?
+    @able_to_post_comments ||=
+      if welcome_comment_implemented? && config.welcome_comment_enabled
+        able_to_comment?
+      end
   end
 end
