@@ -1,27 +1,15 @@
 class CC::PullRequests < CC::Service
   VALID_TOKEN_MESSAGE = "Access token is valid.".freeze
-  CANT_POST_COMMENTS_MESSAGE = "Access token is invalid - can't post comments".freeze
   CANT_UPDATE_STATUS_MESSAGE = "Access token is invalid - can't update status.".freeze
-  INVALID_TOKEN_MESSAGE = "Access token is invalid.".freeze
-
-  MESSAGES = {
-    [true, true] => VALID_TOKEN_MESSAGE,
-    [true, nil] => VALID_TOKEN_MESSAGE,
-    [false, nil] => CANT_UPDATE_STATUS_MESSAGE,
-    [true, false] => CANT_POST_COMMENTS_MESSAGE,
-    [false, true] => CANT_UPDATE_STATUS_MESSAGE,
-    [false, false] => INVALID_TOKEN_MESSAGE,
-  }.freeze
 
   def receive_test
     setup_http
 
-    tests = [able_to_update_status?, able_to_post_comments?]
-
-    {
-      ok: tests.compact.all?,
-      message: MESSAGES.fetch(tests),
-    }
+    if able_to_update_status?
+      { ok: true, message: VALID_TOKEN_MESSAGE }
+    else
+      { ok: false, message: CANT_UPDATE_STATUS_MESSAGE }
+    end
   end
 
   def receive_pull_request
@@ -136,16 +124,5 @@ class CC::PullRequests < CC::Service
 
   def git_url
     @git_url ||= URI.parse(@payload.fetch("git_url"))
-  end
-
-  def welcome_comment_implemented?
-    respond_to?(:receive_pull_request_welcome_comment)
-  end
-
-  def able_to_post_comments?
-    @able_to_post_comments ||=
-      if welcome_comment_implemented? && config.welcome_comment_enabled
-        able_to_comment?
-      end
   end
 end

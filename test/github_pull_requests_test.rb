@@ -105,7 +105,7 @@ class TestGitHubPullRequests < CC::Service::TestCase
 
     response = receive_test({ welcome_comment_enabled: true }, github_slug: "pbrisbin/foo")
     assert_equal false, response[:ok]
-    assert_equal response[:message], CC::PullRequests::CANT_POST_COMMENTS_MESSAGE
+    assert_equal response[:message], CC::Service::GitHubPullRequests::CANT_POST_COMMENTS_MESSAGE
   end
 
   def test_pull_request_status_test_doesnt_blow_up_when_unused_keys_present_in_config
@@ -129,7 +129,7 @@ class TestGitHubPullRequests < CC::Service::TestCase
     response = receive_test({ welcome_comment_enabled: true }, github_slug: "pbrisbin/foo")
     assert_equal response[:ok], false
 
-    assert_equal response[:message], CC::PullRequests::INVALID_TOKEN_MESSAGE
+    assert_equal response[:message], CC::Service::GitHubPullRequests::INVALID_TOKEN_MESSAGE
   end
 
   def test_updating_status_for_pull_request_unknown_state
