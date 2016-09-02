@@ -175,7 +175,7 @@ class TestGitHubPullRequests < CC::Service::TestCase
     receive_welcome_comment(
       { welcome_comment_enabled: true },
       {
-        author_is_site_admin: false,
+        author_can_administrate_repo: false,
       }
     )
   end
@@ -190,7 +190,7 @@ class TestGitHubPullRequests < CC::Service::TestCase
     receive_welcome_comment(
       { welcome_comment_enabled: true },
       {
-        author_is_site_admin: true,
+        author_can_administrate_repo: true,
       }
     )
   end
@@ -209,7 +209,7 @@ class TestGitHubPullRequests < CC::Service::TestCase
         welcome_comment_markdown: "Can't wait to review this!",
       },
       {
-        author_is_site_admin: true,
+        author_can_administrate_repo: true,
       }
     )
   end
@@ -218,7 +218,7 @@ class TestGitHubPullRequests < CC::Service::TestCase
     receive_welcome_comment(
       { welcome_comment_enabled: false },
       {
-        author_is_site_admin: true,
+        author_can_administrate_repo: true,
       }
     )
   end

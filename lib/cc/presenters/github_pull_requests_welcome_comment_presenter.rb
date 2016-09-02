@@ -24,7 +24,7 @@ Quick note: By default, Code Climate will post the above comment on the *first* 
       end
 
       def welcome_message
-        if author_is_site_admin?
+        if author_can_administrate_repo?
           welcome_comment_introduction + welcome_comment_body + welcome_comment_footer
         else
           welcome_comment_introduction + welcome_comment_body
@@ -35,8 +35,8 @@ Quick note: By default, Code Climate will post the above comment on the *first* 
 
       attr_reader :payload, :config
 
-      def author_is_site_admin?
-        payload.fetch("author_is_site_admin")
+      def author_can_administrate_repo?
+        payload.fetch("author_can_administrate_repo")
       end
 
       def author_username
